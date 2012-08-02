@@ -39,7 +39,9 @@
   (let ((map (make-sparse-keymap)))
     map))
 
-(defvar rails-log-buffer-name "*rails-log*")
+(defun rails-log-buffer-name (file)
+  (let ((project (car (last (split-string (rails-log-project-root) "/" t)))))
+    (concat "*rails-" project "-" file "*")))
 
 (defun rails-log-parent-directory (path)
   (if (string= path "/")
@@ -168,8 +170,8 @@
 (defun rails-log-show (file)
   (let ((root (rails-log-project-root)))
     (if root
-	(let ((log-file (concat root "log/" file))
-	      (buffer (generate-new-buffer rails-log-buffer-name)))
+	(let ((log-file (concat root "log/" file ".log"))
+	      (buffer (get-buffer-create (rails-log-buffer-name file))))
 	  (setq rails-log-process (start-process "rails-log" buffer "tail" "-n" "100" "-f" log-file))
 	  (set-process-filter rails-log-process #'rails-log-filter)
 	  (switch-to-buffer buffer)
@@ -178,15 +180,15 @@
 
 (defun rails-log-show-development ()
   (interactive)
-  (rails-log-show "development.log"))
+  (rails-log-show "development"))
 
 (defun rails-log-show-test ()
   (interactive)
-  (rails-log-show "test.log"))
+  (rails-log-show "test"))
 
 (defun rails-log-show-production ()
   (interactive)
-  (rails-log-show "production.log"))
+  (rails-log-show "production"))
 
 (provide 'rails-log-mode)
 
