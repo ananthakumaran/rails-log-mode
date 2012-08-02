@@ -1,5 +1,6 @@
 # Rails Log Mode
-Major mode for viewing Rails log files
+
+Major mode for viewing Rails log files.
 
 ## Installation
 
@@ -11,5 +12,6 @@ Major mode for viewing Rails log files
 ## Usage
 
 Run `M-x rails-log-show-development` from the project folder. This
-will run `tail -f` in the development.log file and display the output in
-a buffer. Press `Enter` to open the file in the stack trace.
+will run `tail -f` in the development.log file and display the output
+in a buffer. All the file paths in the log are navigatable. Press
+`Enter` to open a file in the stack trace.
