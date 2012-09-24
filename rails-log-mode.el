@@ -41,7 +41,7 @@
 
 (defun rails-log-buffer-name (file)
   (let ((project (car (last (split-string (rails-log-project-root) "/" t)))))
-    (concat "*rails-" project "-" file "*")))
+    (concat "*rails-" project "-" file "-log" "*")))
 
 (defun rails-log-parent-directory (path)
   (if (string= path "/")
