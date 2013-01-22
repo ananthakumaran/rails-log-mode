@@ -102,6 +102,8 @@
 
 
 (defun rails-log-get-bundler-paths ()
+  (when (fboundp 'rvm-activate-corresponding-ruby)
+    (rvm-activate-corresponding-ruby))
   (let ((output (shell-command-to-string "bundle list --paths")))
     (when (not (string-match "Could not locate Gemfile" output))
       (split-string output  "\n" t))))
@@ -115,7 +117,7 @@
 	     rails-log-bundler-paths)))
 
 (defvar rails-log-regexp-alist
-  `(( "^ *\\(.*?\\) (.*?) \\(.*\\):\\([0-9]+\\):in .*$" .
+  `(("^ *\\(.*?\\) (.*?) \\(.*\\):\\([0-9]+\\):in .*$" .
       (lambda ()
 	(let* ((gemname (match-string 1))
 	       (root (save-match-data (rails-log-gem-root gemname))))
