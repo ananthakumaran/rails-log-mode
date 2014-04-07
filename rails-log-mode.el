@@ -43,21 +43,12 @@
   (let ((project (car (last (split-string (rails-log-project-root) "/" t)))))
     (concat "*rails-" project "-" file "-log" "*")))
 
-(defun rails-log-parent-directory (path)
-  (if (string= path "/")
-      nil
-    (file-name-as-directory (expand-file-name (concat path "..")))))
-
 (defun rails-log-project-root ()
   (or rails-log-project-root-cache
-      (let ((dir default-directory)
-	    (found nil))
-	(while (and dir (not found))
-	  (setq found (file-exists-p (concat dir "Gemfile")))
-	  (if (not found)
-	      (setq dir (rails-log-parent-directory dir))))
-	(setq rails-log-project-root-cache dir)
-	dir)))
+      (let ((gemfile-dir (locate-dominating-file default-directory "Gemfile")))
+        (setq rails-log-project-root-cache
+              (or gemfile-dir
+                  default-directory)))))
 
 (define-derived-mode rails-log-mode fundamental-mode "Rails log"
   "Major mode for viewing Rails log files.
@@ -67,7 +58,7 @@
   (setq buffer-read-only t)
   (buffer-disable-undo)
   (setq truncate-lines t
-	line-move-visual nil)
+        line-move-visual nil)
   (setq rails-log-bundler-paths (rails-log-get-bundler-paths)))
 
 (defun rails-log-visit-file (button)
@@ -76,27 +67,27 @@
 
 (defun rails-log-link-file (start end path)
   (let ((link (make-button start
-			   end
-			   'help-echo "Visit file"
-			   'action #'rails-log-visit-file
-			   'follow-link t
-			   'mouse-face 'compilation-error-face)))
+                           end
+                           'help-echo "Visit file"
+                           'action #'rails-log-visit-file
+                           'follow-link t
+                           'mouse-face 'compilation-error-face)))
     (button-put link 'path path)))
 
 (defun rails-log-visit-line (button)
   (let ((path (button-get button 'path))
-	(lineno (button-get button 'lineno)))
+        (lineno (button-get button 'lineno)))
     (find-file-other-window path)
     (goto-char (point-min))
     (forward-line (1- lineno))))
 
 (defun rails-log-link-line (start end path lineno)
   (let ((link (make-button start
-			   end
-			   'help-echo "Visit file"
-			   'action #'rails-log-visit-line
-			   'follow-link t
-			   'mouse-face 'compilation-error-face)))
+                           end
+                           'help-echo "Visit file"
+                           'action #'rails-log-visit-line
+                           'follow-link t
+                           'mouse-face 'compilation-error-face)))
     (button-put link 'path path)
     (button-put link 'lineno lineno)))
 
@@ -111,83 +102,86 @@
 (defun rails-log-gem-root (name)
   (when rails-log-bundler-paths
     (find-if (lambda (path)
-	       (let* ((basename (file-name-nondirectory path))
-		      (gemname (mapconcat #'identity (butlast (split-string basename "-")) "-")))
-		 (string= name gemname)))
-	     rails-log-bundler-paths)))
+               (let* ((basename (file-name-nondirectory path))
+                      (gemname (mapconcat #'identity (butlast (split-string basename "-")) "-")))
+                 (string= name gemname)))
+             rails-log-bundler-paths)))
 
 (defvar rails-log-regexp-alist
   `(("^ *\\(.*?\\) (.*?) \\(.*\\):\\([0-9]+\\):in .*$" .
       (lambda ()
-	(let* ((gemname (match-string 1))
-	       (root (save-match-data (rails-log-gem-root gemname))))
-	  (when root
-	    (rails-log-link-line (match-beginning 2)
-				 (match-end 3)
-				 (concat root "/" (match-string 2))
-				 (string-to-number (match-string 3)))))))
+        (let* ((gemname (match-string 1))
+               (root (save-match-data (rails-log-gem-root gemname))))
+          (when root
+            (rails-log-link-line (match-beginning 2)
+                                 (match-end 3)
+                                 (concat root "/" (match-string 2))
+                                 (string-to-number (match-string 3)))))))
 
     ("^ *\\(.*\\):\\([0-9]+\\):in .*$" .
      (lambda ()
        (let ((lineno (match-string 2))
-	     (file (match-string 1)))
-	 (rails-log-link-line (match-beginning 1)
-			      (match-end 1)
-			      (concat (rails-log-project-root) file)
-			      (string-to-number lineno)))))
+             (file (match-string 1)))
+         (rails-log-link-line (match-beginning 1)
+                              (match-end 1)
+                              (concat (rails-log-project-root) file)
+                              (string-to-number lineno)))))
 
     ("^ *Rendered \\(/.*?\\) \\(within .* \\)?(.*ms)$" .
      (lambda ()
        (rails-log-link-file (match-beginning 1)
-			    (match-end 1)
-			    (match-string 1))))))
+                            (match-end 1)
+                            (match-string 1))))))
 
 (defun rails-log-filter (process output)
   (with-current-buffer (process-buffer process)
     (let ((inhibit-read-only t)
-	  (start (point-max)))
+          (start (point-max)))
       (setq output (ansi-color-apply output))
       (goto-char (point-max))
       (insert output)
       (goto-char start)
       (while (not (eobp))
 
-	(beginning-of-line)
+        (beginning-of-line)
 
-	(let ((end (save-excursion (end-of-line) (point)))
-	      (match-found nil)
-	      (regexp-alist rails-log-regexp-alist))
+        (let ((end (save-excursion (end-of-line) (point)))
+              (match-found nil)
+              (regexp-alist rails-log-regexp-alist))
 
-	  (while (and (car regexp-alist) (not match-found))
-	    (let ((regex (caar regexp-alist))
-		  (callback (cdar regexp-alist)))
-	      (when (re-search-forward regex end t)
-		(funcall callback)
-		(setq match-found t))
+          (while (and (car regexp-alist) (not match-found))
+            (let ((regex (caar regexp-alist))
+                  (callback (cdar regexp-alist)))
+              (when (re-search-forward regex end t)
+                (funcall callback)
+                (setq match-found t))
 
-	      (setq regexp-alist (cdr regexp-alist)))))
+              (setq regexp-alist (cdr regexp-alist)))))
 
-	(forward-line 1)))))
+        (forward-line 1)))))
 
 (defun rails-log-show (file)
   (let ((root (rails-log-project-root)))
     (if root
-	(let ((log-file (concat root "log/" file ".log"))
-	      (buffer (get-buffer-create (rails-log-buffer-name file))))
-	  (setq rails-log-process (start-process "rails-log" buffer "tail" "-n" "100" "-f" log-file))
-	  (set-process-filter rails-log-process #'rails-log-filter)
-	  (switch-to-buffer buffer)
-	  (rails-log-mode))
-      (message "Gemfile not found."))))
+        (let ((log-file (concat root "log/" file ".log"))
+              (buffer (get-buffer-create (rails-log-buffer-name file))))
+          (setq rails-log-process (start-process "rails-log" buffer "tail" "-n" "100" "-f" log-file))
+          (set-process-filter rails-log-process #'rails-log-filter)
+          (switch-to-buffer buffer)
+          (rails-log-mode))
+      (error "Gemfile not found."))))
 
+;;;###autoload
 (defun rails-log-show-development ()
   (interactive)
   (rails-log-show "development"))
 
+;;;###autoload
 (defun rails-log-show-test ()
   (interactive)
   (rails-log-show "test"))
 
+;;;###autoload
 (defun rails-log-show-production ()
   (interactive)
   (rails-log-show "production"))
