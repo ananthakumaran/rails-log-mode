@@ -46,9 +46,8 @@
 (defun rails-log-project-root ()
   (or rails-log-project-root-cache
       (let ((gemfile-dir (locate-dominating-file default-directory "Gemfile")))
-        (setq rails-log-project-root-cache
-              (or gemfile-dir
-                  default-directory)))))
+        (when gemfile-dir
+          (setq rails-log-project-root-cache (expand-file-name gemfile-dir))))))
 
 (define-derived-mode rails-log-mode fundamental-mode "Rails log"
   "Major mode for viewing Rails log files.
